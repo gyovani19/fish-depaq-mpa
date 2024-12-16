@@ -19,19 +19,27 @@
 <body>
     <h1>Mapa Interativo de Pesca</h1>
     <div id="controls">
-        <label for="state">Selecione o Estado:</label>
+        <label for="state">Estado:</label>
         <select id="state">
             <option value="">Todos</option>
-        </select>
+        </select>       
 
-        <label for="year">Selecione o Ano:</label>
-        <select id="year">
-            <option value="">Todos</option>
-        </select>
-
-        <label for="taxon">Selecione a Espécie:</label>
+        <label for="taxon">Espécie:</label>
         <select id="taxon">
             <option value="">Todas</option>
+        </select>
+
+        <label for="type">Tipo de Pesca:</label>
+        <select id="type">
+            <option value="">Todos</option>
+            <option value="artesanal">Artesanal</option>
+            <option value="industrial">Industrial</option>
+            <option value="agregado">Agregado</option>
+        </select>
+
+        <label for="year">Ano:</label>
+        <select id="year">
+            <option value="">Todos</option>
         </select>
 
         <button id="download">Baixar CSV</button>
@@ -57,15 +65,13 @@
                 var states = [...new Set(data.map(d => d.OtherArea))].sort();
                 var taxons = [...new Set(data.map(d => d.Taxon))].sort();
 
-                // Adiciona combinações "artesanal", "industrial" e "agregado" no seletor de taxon
+                // Preenche o seletor de espécies
                 var taxonSelect = document.getElementById('taxon');
                 taxons.forEach(taxon => {
-                    ["Artesanal", "Industrial", "Agregado"].forEach(type => {
-                        var option = document.createElement('option');
-                        option.value = `${taxon}_${type}`;
-                        option.textContent = `${taxon} ${type}`;
-                        taxonSelect.appendChild(option);
-                    });
+                    var option = document.createElement('option');
+                    option.value = taxon;
+                    option.textContent = taxon;
+                    taxonSelect.appendChild(option);
                 });
 
                 // Preenche o seletor de estados
@@ -79,7 +85,7 @@
 
                 // Atualiza o seletor de anos dinamicamente
                 function updateYearOptions() {
-                    var selectedTaxon = taxonSelect.value.split('_')[0];
+                    var selectedTaxon = taxonSelect.value;
                     var years = [...new Set(data
                         .filter(d => d.Taxon === selectedTaxon)
                         .map(d => d.Year))].sort((a, b) => a - b);
@@ -173,7 +179,8 @@
 
                 function updatePopup() {
                     var selectedState = stateSelect.value;
-                    var [selectedTaxon, selectedType] = taxonSelect.value.split('_');
+                    var selectedTaxon = taxonSelect.value;
+                    var selectedType = document.getElementById('type').value;
                     var selectedYear = document.getElementById('year').value;
 
                     Object.entries(overlays).forEach(([state, layer]) => {
@@ -182,7 +189,8 @@
                         var total = calculateAggregates(selectedTaxon, selectedYear, selectedType, state);
 
                         var info = `Estado: ${state}<br>
-                            Espécie: ${selectedTaxon} ${selectedType}<br>
+                            Espécie: ${selectedTaxon}<br>
+                            Tipo de Pesca: ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}<br>
                             Ano: ${selectedYear || 'Todos'}<br>
                             Quantidade: ${total} toneladas`;
 
@@ -217,6 +225,7 @@
                     updatePopup();
                 });
                 document.getElementById('year').addEventListener('change', updatePopup);
+                document.getElementById('type').addEventListener('change', updatePopup);
 
                 // Inicializa os overlays e popups
                 updateVisibility();
