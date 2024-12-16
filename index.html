@@ -29,8 +29,8 @@
             <option value="">Todos</option>
         </select>
 
-        <label for="variable">Selecione a Espécie:</label>
-        <select id="variable">
+        <label for="taxon">Selecione a Espécie:</label>
+        <select id="taxon">
             <option value="">Todas</option>
         </select>
     </div>
@@ -53,8 +53,7 @@
             complete: function(results) {
                 var data = results.data;
                 var states = [...new Set(data.map(d => d.OtherArea))].sort();
-                var years = [...new Set(data.map(d => d.Year))].sort((a, b) => a - b);
-                var variables = [...new Set(data.map(d => d.Variable))].sort();
+                var taxons = [...new Set(data.map(d => d.Taxon))].sort();
 
                 // Preenche o seletor de estados
                 var stateSelect = document.getElementById('state');
@@ -65,28 +64,53 @@
                     stateSelect.appendChild(option);
                 });
 
-                // Preenche o seletor de anos
-                var yearSelect = document.getElementById('year');
-                years.forEach(year => {
-                    var option = document.createElement('option');
-                    option.value = year;
-                    option.textContent = year;
-                    yearSelect.appendChild(option);
-                });
-
                 // Preenche o seletor de espécies
-                var variableSelect = document.getElementById('variable');
-                variables.forEach(variable => {
+                var taxonSelect = document.getElementById('taxon');
+                taxons.forEach(taxon => {
                     var option = document.createElement('option');
-                    option.value = variable;
-                    option.textContent = variable;
-                    variableSelect.appendChild(option);
+                    option.value = taxon;
+                    option.textContent = taxon;
+                    taxonSelect.appendChild(option);
                 });
 
-                // Define valores padrão
-                stateSelect.value = "Rio de Janeiro";
-                yearSelect.value = "2022";
-                variableSelect.value = "Lula_ind";
+                // Atualiza o seletor de anos dinamicamente
+                function updateYearOptions() {
+                    var selectedTaxon = taxonSelect.value;
+                    var years = [...new Set(data
+                        .filter(d => !selectedTaxon || d.Taxon === selectedTaxon)
+                        .map(d => d.Year))].sort((a, b) => a - b);
+
+                    var yearSelect = document.getElementById('year');
+                    yearSelect.innerHTML = '<option value="">Todos</option>';
+                    years.forEach(year => {
+                        var option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = year;
+                        yearSelect.appendChild(option);
+                    });
+                }
+
+                // Calcula os dados agregados
+                function calculateAggregates(taxon, year) {
+                    var filteredData = data.filter(d =>
+                        d.Taxon === taxon &&
+                        (!year || d.Year === year)
+                    );
+
+                    var artesanal = filteredData
+                        .filter(d => d.Variable.includes('_art'))
+                        .reduce((sum, d) => sum + parseFloat(d["CatchAmount (tonnes)"].replace(',', '.')), 0);
+
+                    var industrial = filteredData
+                        .filter(d => d.Variable.includes('_ind'))
+                        .reduce((sum, d) => sum + parseFloat(d["CatchAmount (tonnes)"].replace(',', '.')), 0);
+
+                    return {
+                        artesanal: artesanal.toFixed(2),
+                        industrial: industrial.toFixed(2),
+                        agregado: (artesanal + industrial).toFixed(2)
+                    };
+                }
 
                 // Coordenadas precisas para o litoral do Rio de Janeiro
                 var rioCoastalRegion = L.polygon([
@@ -106,30 +130,25 @@
                     fillOpacity: 0.5
                 });
 
-
-               // new google.maps.LatLng(-21.40768,-40.85618), new google.maps.LatLng(-22.18708,-41.9234), new google.maps.LatLng(-22.88123,-43.36415), //new google.maps.LatLng(-22.99806,-44.25697), new google.maps.LatLng(-23.87775,-44.04419), new google.maps.LatLng(-24.11499,-43.01495), new //google.maps.LatLng(-23.83026,-41.80993), new google.maps.LatLng(-23.42273,-41.32954), new google.maps.LatLng(-22.89254,-40.67336), new google.maps.LatLng(-21.90753,-39.62468), 
-
                 // Coordenadas precisas para o litoral de São Paulo
                 var spCoastalRegion = L.polygon([
-                    [-23.31766,-44.85521], // Cananeia
-                    [-23.44072,-45.52065], // Ilha do Cardoso
-                    [-23.64421,-46.09821], // Iguape
-                    [-24.06825,-46.73069], // Santos
-                    [-24.65076,-47.14345], // Ilhabela
-                    [-24.766,-48.03626], // São Sebastião
-                    [-25.63355,-47.82349],
-                    [-25.51103,-46.97003],
-                    [-25.07036,-46.3363],
-                    [-24.78654,-45.50434],
-                    [-24.34201,-44.89211],
-                    [-24.09176,-44.45867],  // Cananeia novamente
+                    [-23.31766, -44.85521], // Cananeia
+                    [-23.44072, -45.52065], // Ilha do Cardoso
+                    [-23.64421, -46.09821], // Iguape
+                    [-24.06825, -46.73069], // Santos
+                    [-24.65076, -47.14345], // Ilhabela
+                    [-24.766, -48.03626], // São Sebastião
+                    [-25.63355, -47.82349],
+                    [-25.51103, -46.97003],
+                    [-25.07036, -46.3363],
+                    [-24.78654, -45.50434],
+                    [-24.34201, -44.89211],
+                    [-24.09176, -44.45867]  // Cananeia novamente
                 ], {
                     color: 'green',
                     fillColor: '#90ee90',
                     fillOpacity: 0.5
                 });
-
-                //new google.maps.LatLng(-23.31766,-44.85521), new google.maps.LatLng(-23.44072,-45.52065), new google.maps.LatLng(-23.64421,-46.09821), new google.maps.LatLng(-24.06825,-46.73069), new google.maps.LatLng(-24.65076,-47.14345), new google.maps.LatLng(-24.766,-48.03626), new google.maps.LatLng(-25.63355,-47.82349), new google.maps.LatLng(-25.51103,-46.97003), new google.maps.LatLng(-25.07036,-46.3363), new google.maps.LatLng(-24.78654,-45.50434), new google.maps.LatLng(-24.34201,-44.89211), new google.maps.LatLng(-24.09176,-44.45867), 
 
                 var overlays = {
                     "Rio de Janeiro": rioCoastalRegion,
@@ -149,43 +168,69 @@
                 }
 
                 function updatePopup() {
-    var selectedYear = yearSelect.value;
-    var selectedVariable = variableSelect.value;
+    var selectedYear = document.getElementById('year').value;
+    var selectedTaxon = taxonSelect.value;
 
     Object.entries(overlays).forEach(([state, layer]) => {
-        var filteredData = data.filter(d =>
-            d.OtherArea === state && // Filtra apenas os dados do estado correspondente
-            (!selectedYear || d.Year === selectedYear) &&
-            (!selectedVariable || d.Variable === selectedVariable)
-        );
+        // Filtra os dados do estado correspondente
+        var stateData = data.filter(d => d.OtherArea === state);
 
-        var info = filteredData.map(d => {
-            return `Estado: ${d.OtherArea}, Ano: ${d.Year}, Espécie: ${d.Variable}, Quantidade: ${parseFloat(d["CatchAmount (tonnes)"].replace(',', '.')).toFixed(2)} toneladas`;
-        }).join('<br>');
+        if (stateData.length > 0) {
+            var filteredData = stateData.filter(d =>
+                (!selectedTaxon || d.Taxon === selectedTaxon) &&
+                (!selectedYear || d.Year === selectedYear)
+            );
 
-        layer.on('mouseover', function (e) {
-            var popup = L.popup({ maxWidth: 400, keepInView: true })
-                .setLatLng(e.latlng)
-                .setContent(info || '<b>Nenhum dado encontrado para os filtros selecionados.</b>')
-                .openOn(map);
-        });
+            var artesanal = filteredData
+                .filter(d => d.Variable.includes('_art'))
+                .reduce((sum, d) => sum + parseFloat(d["CatchAmount (tonnes)"].replace(',', '.')), 0);
 
-        layer.on('mouseout', function () {
-            map.closePopup();
-        });
+            var industrial = filteredData
+                .filter(d => d.Variable.includes('_ind'))
+                .reduce((sum, d) => sum + parseFloat(d["CatchAmount (tonnes)"].replace(',', '.')), 0);
+
+            var agregado = (artesanal + industrial).toFixed(2);
+
+            var info = `
+                Estado: ${state}<br>
+                Espécie: ${selectedTaxon || 'Todas'}<br>
+                Artesanal: ${artesanal.toFixed(2)} toneladas<br>
+                Industrial: ${industrial.toFixed(2)} toneladas<br>
+                Agregado: ${agregado} toneladas
+            `;
+
+            layer.on('mouseover', function (e) {
+                var popup = L.popup({ maxWidth: 400, keepInView: true })
+                    .setLatLng(e.latlng)
+                    .setContent(info || '<b>Nenhum dado encontrado para os filtros selecionados.</b>')
+                    .openOn(map);
+            });
+
+            layer.on('mouseout', function () {
+                map.closePopup();
+            });
+        } else {
+            // Remove os eventos do overlay caso não haja dados
+            layer.off('mouseover');
+            layer.off('mouseout');
+        }
     });
 }
 
 
+                taxonSelect.addEventListener('change', () => {
+                    updateYearOptions();
+                    updatePopup();
+                });
                 stateSelect.addEventListener('change', () => {
                     updateVisibility();
                     updatePopup();
                 });
-                yearSelect.addEventListener('change', updatePopup);
-                variableSelect.addEventListener('change', updatePopup);
+                document.getElementById('year').addEventListener('change', updatePopup);
 
                 // Inicializa os overlays e popups
                 updateVisibility();
+                updateYearOptions();
                 updatePopup();
             }
         });
