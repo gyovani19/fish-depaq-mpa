@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mapa Interativo de Pesca - Lula</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.1/papaparse.min.js"></script>
+    <style>
+        #map {
+            height: 600px;
+        }
+        #controls {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mapa Interativo de Pesca</h1>
+    <div id="controls">
+        <label for="state">Selecione o Estado:</label>
+        <select id="state">
+            <option value="">Todos</option>
+        </select>
+
+        <label for="year">Selecione o Ano:</label>
+        <select id="year">
+            <option value="">Todos</option>
+        </select>
+
+        <label for="variable">Selecione a Espécie:</label>
+        <select id="variable">
+            <option value="">Todas</option>
+        </select>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        // Inicializa o mapa centrado na costa do Rio de Janeiro
+        var map = L.map('map').setView([-22.9, -43.2], 8);
+
+        // Adiciona um tile layer ao mapa
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Carrega dados do CSV
+        Papa.parse('data.csv', {
+            download: true,
+            header: true,
+            complete: function(results) {
+                var data = results.data;
+                var states = [...new Set(data.map(d => d.OtherArea))].sort();
+                var years = [...new Set(data.map(d => d.Year))].sort((a, b) => a - b);
+                var variables = [...new Set(data.map(d => d.Variable))].sort();
+
+                // Preenche o seletor de estados
+                var stateSelect = document.getElementById('state');
+                states.forEach(state => {
+                    var option = document.createElement('option');
+                    option.value = state;
+                    option.textContent = state;
+                    stateSelect.appendChild(option);
+                });
+
+                // Preenche o seletor de anos
+                var yearSelect = document.getElementById('year');
+                years.forEach(year => {
+                    var option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearSelect.appendChild(option);
+                });
+
+                // Preenche o seletor de espécies
+                var variableSelect = document.getElementById('variable');
+                variables.forEach(variable => {
+                    var option = document.createElement('option');
+                    option.value = variable;
+                    option.textContent = variable;
+                    variableSelect.appendChild(option);
+                });
+
+                // Define valores padrão
+                stateSelect.value = "Rio de Janeiro";
+                yearSelect.value = "2022";
+                variableSelect.value = "Lula_ind";
+
+                // Coordenadas precisas para o litoral do Rio de Janeiro
+                var rioCoastalRegion = L.polygon([
+                    [-21.40768,-40.85618], // Angra dos Reis
+                    [-22.18708,-41.9234], // Ilha Grande
+                    [-22.88123,-43.36415], // Niterói
+                    [-22.99806,-44.25697], // Cabo Frio
+                    [-23.87775,-44.04419], // Arraial do Cabo
+                    [-24.11499,-43.01495],  // Paraty
+                    [-23.83026,-41.80993],
+                    [-23.42273,-41.32954],
+                    [-22.89254,-40.67336],
+                    [-21.90753,-39.62468],
+                ], {
+                    color: 'blue',
+                    fillColor: '#add8e6',
+                    fillOpacity: 0.5
+                });
+
+
+               // new google.maps.LatLng(-21.40768,-40.85618), new google.maps.LatLng(-22.18708,-41.9234), new google.maps.LatLng(-22.88123,-43.36415), //new google.maps.LatLng(-22.99806,-44.25697), new google.maps.LatLng(-23.87775,-44.04419), new google.maps.LatLng(-24.11499,-43.01495), new //google.maps.LatLng(-23.83026,-41.80993), new google.maps.LatLng(-23.42273,-41.32954), new google.maps.LatLng(-22.89254,-40.67336), new google.maps.LatLng(-21.90753,-39.62468), 
+
+                // Coordenadas precisas para o litoral de São Paulo
+                var spCoastalRegion = L.polygon([
+                    [-23.31766,-44.85521], // Cananeia
+                    [-23.44072,-45.52065], // Ilha do Cardoso
+                    [-23.64421,-46.09821], // Iguape
+                    [-24.06825,-46.73069], // Santos
+                    [-24.65076,-47.14345], // Ilhabela
+                    [-24.766,-48.03626], // São Sebastião
+                    [-25.63355,-47.82349],
+                    [-25.51103,-46.97003],
+                    [-25.07036,-46.3363],
+                    [-24.78654,-45.50434],
+                    [-24.34201,-44.89211],
+                    [-24.09176,-44.45867],  // Cananeia novamente
+                ], {
+                    color: 'green',
+                    fillColor: '#90ee90',
+                    fillOpacity: 0.5
+                });
+
+                //new google.maps.LatLng(-23.31766,-44.85521), new google.maps.LatLng(-23.44072,-45.52065), new google.maps.LatLng(-23.64421,-46.09821), new google.maps.LatLng(-24.06825,-46.73069), new google.maps.LatLng(-24.65076,-47.14345), new google.maps.LatLng(-24.766,-48.03626), new google.maps.LatLng(-25.63355,-47.82349), new google.maps.LatLng(-25.51103,-46.97003), new google.maps.LatLng(-25.07036,-46.3363), new google.maps.LatLng(-24.78654,-45.50434), new google.maps.LatLng(-24.34201,-44.89211), new google.maps.LatLng(-24.09176,-44.45867), 
+
+                var overlays = {
+                    "Rio de Janeiro": rioCoastalRegion,
+                    "São Paulo": spCoastalRegion
+                };
+
+                function updateVisibility() {
+                    var selectedState = stateSelect.value;
+
+                    Object.keys(overlays).forEach(state => {
+                        if (!selectedState || selectedState === state) {
+                            map.addLayer(overlays[state]);
+                        } else {
+                            map.removeLayer(overlays[state]);
+                        }
+                    });
+                }
+
+                function updatePopup() {
+    var selectedYear = yearSelect.value;
+    var selectedVariable = variableSelect.value;
+
+    Object.entries(overlays).forEach(([state, layer]) => {
+        var filteredData = data.filter(d =>
+            d.OtherArea === state && // Filtra apenas os dados do estado correspondente
+            (!selectedYear || d.Year === selectedYear) &&
+            (!selectedVariable || d.Variable === selectedVariable)
+        );
+
+        var info = filteredData.map(d => {
+            return `Estado: ${d.OtherArea}, Ano: ${d.Year}, Espécie: ${d.Variable}, Quantidade: ${parseFloat(d["CatchAmount (tonnes)"].replace(',', '.')).toFixed(2)} toneladas`;
+        }).join('<br>');
+
+        layer.on('mouseover', function (e) {
+            var popup = L.popup({ maxWidth: 400, keepInView: true })
+                .setLatLng(e.latlng)
+                .setContent(info || '<b>Nenhum dado encontrado para os filtros selecionados.</b>')
+                .openOn(map);
+        });
+
+        layer.on('mouseout', function () {
+            map.closePopup();
+        });
+    });
+}
+
+
+                stateSelect.addEventListener('change', () => {
+                    updateVisibility();
+                    updatePopup();
+                });
+                yearSelect.addEventListener('change', updatePopup);
+                variableSelect.addEventListener('change', updatePopup);
+
+                // Inicializa os overlays e popups
+                updateVisibility();
+                updatePopup();
+            }
+        });
+    </script>
+</body>
+</html>
