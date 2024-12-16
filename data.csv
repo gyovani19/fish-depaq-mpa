@@ -127,7 +127,6 @@ Rio de Janeiro,Moluscos,Lula_ind,2019,Lula,Doryteuthis spp,"38,8622","Industrial
 Rio de Janeiro,Moluscos,Lula_ind,2020,Lula,Doryteuthis spp,"13,9968","Industrial (LS, C)"
 Rio de Janeiro,Moluscos,Lula_ind,2021,Lula,Doryteuthis spp,"25,3918","Industrial (LS, C)"
 Rio de Janeiro,Moluscos,Lula_ind,2022,Lula,Doryteuthis spp,"13,432","Industrial (LS, C)"
-São Paulo,Moluscos,Lula_ind,2022,Lula,Doryteuthis spp,"31,432","Industrial (LS, C)"
 Rio de Janeiro,Moluscos,Lula_oceanica_art,2017,Lula oceanica,Thysanoteuthis rhombus,"0,015","Artisanal (SS, C)"
 Rio de Janeiro,Moluscos,Lula_oceanica_art,2018,Lula oceanica,Thysanoteuthis rhombus,"0,016","Artisanal (SS, C)"
 Rio de Janeiro,Moluscos,Lula_oceanica_art,2019,Lula oceanica,Thysanoteuthis rhombus,"0,01388551435","Artisanal (SS, C)"
@@ -460,3 +459,4 @@ Rio de Janeiro,Moluscos,Vongole_art,2019,Vongole,Tivela mactroides,"5,114","Arti
 Rio de Janeiro,Moluscos,Vongole_art,2020,Vongole,Tivela mactroides,"2,7567","Artisanal (SS, C)"
 Rio de Janeiro,Moluscos,Vongole_art,2021,Vongole,Tivela mactroides,"0,5815","Artisanal (SS, C)"
 Rio de Janeiro,Moluscos,Vongole_art,2022,Vongole,Tivela mactroides,"3,332","Artisanal (SS, C)"
+São Paulo,Moluscos,Lula_ind,2022,Lula,Doryteuthis spp,"31,432","Industrial (LS, C)"
