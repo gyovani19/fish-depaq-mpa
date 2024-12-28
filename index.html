@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mapa Interativo de Pesca</title>
+    <title>RECONPESQ</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <!-- Seu CSS -->
     <link rel="stylesheet" href="style.css" />
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <!-- PapaParse JS -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.1/papaparse.min.js"></script>
-    
 </head>
 <body>
     <header>
         <img src="pisces.jpeg" alt="Logo do Projeto">
-        <h1>Mapa Interativo de Pesca</h1>
+        <h1>Reconstrução da Estatística Pesquira Marinha de 1950 até 2015</h1>
     </header>
     <div id="controls">
-
         <div class="control-group">
             <label for="taxon">Espécie:</label>
             <select id="taxon">
@@ -34,29 +36,101 @@
             </select>
         </div>
 
-    <div class="control-group">
-        <label for="state">Estado:</label>
-        <select id="state">
-            <option value="">Todos</option>
-        </select>
+        <div class="control-group">
+            <label for="state">Estado:</label>
+            <select id="state">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="year">Ano:</label>
+            <select id="year">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <button id="download">Baixar CSV Filtrado</button>
     </div>
 
-    <div class="control-group">
-        <label for="year">Ano:</label>
-        <select id="year">
-            <option value="">Todos</option>
-        </select>
+    <!-- Contêiner Comum para Tabela e Mapa -->
+    <div id="content">
+        <div id="map"></div>
+        <!-- Tabela para exibir dados filtrados -->
+        <div id="table-container">
+            <h2>Dados Filtrados</h2>
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>OtherArea</th>
+                        <th>Group</th>
+                        <th>Variable</th>
+                        <th>Year</th>
+                        <th>PortugueseCommonName</th>
+                        <th>Taxon</th>
+                        <th>CatchAmount (tonnes)</th>
+                        <th>Sector</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Linhas da tabela serão inseridas aqui dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Div para o mapa -->
+        
     </div>
 
-    
+    <!-- Ícone de Filtro para Mobile -->
+    <button id="filter-button" aria-label="Abrir Filtros">
+        <!-- Você pode usar um ícone de filtro SVG ou Font Awesome -->
+        &#9881; <!-- Ícone de engrenagem como exemplo -->
+    </button>
 
-    
+    <!-- Modal para Filtros em Mobile -->
+    <div id="filter-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Filtros</h2>
+            <div id="mobile-controls">
+                <div class="control-group">
+                    <label for="taxon-mobile">Espécie:</label>
+                    <select id="taxon-mobile">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
 
-    <button id="download">Baixar CSV</button>
-</div>
+                <div class="control-group">
+                    <label for="type-mobile">Tipo de Pesca:</label>
+                    <select id="type-mobile">
+                        <option value="">Todos</option>
+                        <option value="artesanal">Artesanal</option>
+                        <option value="industrial">Industrial</option>
+                        <option value="agregado">Agregado</option>
+                    </select>
+                </div>
 
-    <div id="map"></div>
+                <div class="control-group">
+                    <label for="state-mobile">Estado:</label>
+                    <select id="state-mobile">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
 
+                <div class="control-group">
+                    <label for="year-mobile">Ano:</label>
+                    <select id="year-mobile">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+
+                <button id="apply-filters">Aplicar Filtros</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seu script JS -->
     <script src="script.js"></script>
 </body>
 </html>
