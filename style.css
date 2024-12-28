@@ -92,7 +92,7 @@ button:hover {
     transform: scale(1.05);
 }
 
-/* Contêiner Comum para Tabela e Mapa */
+/* Conteúdo Principal */
 #content {
     width: 98%;
     margin: 20px auto;
@@ -101,7 +101,35 @@ button:hover {
     gap: 20px;
 }
 
-/* Estilos para a Tabela */
+/* Mapa e Gráfico lado a lado */
+#map-and-chart {
+    display: flex;
+    flex-direction: column; /* Mobile: empilhados */
+    gap: 20px;
+}
+
+/* Mapa e Chart ocupam a mesma "altura" e se ajustam na horizontal no desktop */
+#map {
+    width: 100%;
+    height: 400px; /* Altura menor para mobile */
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+#chart-container {
+    width: 100%;
+}
+
+#chart-container h2 {
+    margin-top: 0;
+}
+
+#plotly-chart {
+    width: 100%;
+    height: 400px; /* Altura do gráfico para mobile */
+}
+
+/* Tabela */
 #table-container {
     background-color: white;
     padding: 20px;
@@ -146,14 +174,6 @@ button:hover {
 #data-table td {
     font-size: 14px;
     color: #333;
-}
-
-/* Estilos para o Mapa */
-#map {
-    width: 100%;
-    height: 600px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* Ícone de Filtro para Mobile */
@@ -229,7 +249,24 @@ button:hover {
     gap: 15px;
 }
 
-/* Responsividade */
+/* --- Responsividade --- */
+@media (min-width: 769px) {
+    /* No desktop, exibe mapa e gráfico lado a lado */
+    #map-and-chart {
+        flex-direction: row; /* Lado a lado */
+    }
+
+    #map {
+        width: 50%;      /* Mapa ocupa metade */
+        height: 600px;   /* Maior altura para desktop */
+    }
+
+    #plotly-chart {
+        width: 100%;
+        height: 600px;   /* Mesmo tamanho do mapa */
+    }
+}
+
 @media (max-width: 768px) {
     #controls {
         display: none; /* Oculta os controles na versão mobile */
@@ -247,7 +284,7 @@ button:hover {
         min-width: 100%;
     }
 
-    /* Estilos dentro da Modal */
+    /* Ajustes dentro da Modal no Mobile */
     .modal-content h2 {
         text-align: center;
         margin-bottom: 20px;

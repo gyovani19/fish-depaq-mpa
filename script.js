@@ -7,390 +7,383 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
 }).addTo(map);
 
-// Variável para armazenar todos os dados
+// Variáveis globais para armazenar todos os dados e os dados filtrados
 var allData = [];
-// Variável para armazenar dados filtrados
 var filteredData = [];
 
-// Carrega dados do CSV
+// Variáveis de overlays (exemplo de RJ e SP)
+var rioCoastalRegion, spCoastalRegion;
+var overlays = {};
+
+// -------------- Carrega dados CSV com PapaParse --------------//
 Papa.parse('data.csv', {
     download: true,
     header: true,
     complete: function(results) {
-        allData = results.data.filter(row => row.Year && row["CatchAmount (tonnes)"]); // Filtra linhas válidas
-        filteredData = allData; // Inicialmente, todos os dados são filtrados
+        // Filtra linhas válidas (com Year e CatchAmount)
+        allData = results.data.filter(row => row.Year && row["CatchAmount (tonnes)"]);
+        filteredData = allData; // Inicialmente, sem filtros
 
-        var states = [...new Set(allData.map(d => d.OtherArea))].sort();
-        var taxons = [...new Set(allData.map(d => d.Taxon))].sort();
-        var years = [...new Set(allData.map(d => parseInt(d.Year)))].sort((a, b) => a - b);
+        // Preenche selects (espécies, estados, anos) com base em allData
+        populateSelects();
 
-        // Preenche o seletor de espécies
-        var taxonSelect = document.getElementById('taxon');
-        var taxonMobileSelect = document.getElementById('taxon-mobile');
-        taxons.forEach(taxon => {
-            var option = document.createElement('option');
-            option.value = taxon;
-            option.textContent = taxon;
-            taxonSelect.appendChild(option);
+        // Inicializa regiões no mapa (exemplo para RJ e SP)
+        initPolygons();
 
-            // Clonar para o mobile
-            var mobileOption = option.cloneNode(true);
-            taxonMobileSelect.appendChild(mobileOption);
-        });
-
-        // Preenche o seletor de estados
-        var stateSelect = document.getElementById('state');
-        var stateMobileSelect = document.getElementById('state-mobile');
-        states.forEach(state => {
-            var option = document.createElement('option');
-            option.value = state;
-            option.textContent = state;
-            stateSelect.appendChild(option);
-
-            // Clonar para o mobile
-            var mobileOption = option.cloneNode(true);
-            stateMobileSelect.appendChild(mobileOption);
-        });
-
-        // Preenche o seletor de anos
-        var yearSelect = document.getElementById('year');
-        var yearMobileSelect = document.getElementById('year-mobile');
-        years.forEach(year => {
-            var option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
-            yearSelect.appendChild(option);
-
-            // Clonar para o mobile
-            var mobileOption = option.cloneNode(true);
-            yearMobileSelect.appendChild(mobileOption);
-        });
-
-        // Preenche o seletor de anos dinamicamente para mobile baseado na espécie selecionada
-        function updateYearOptions() {
-            var selectedTaxon = taxonSelect.value;
-            var relevantYears = [...new Set(allData
-                .filter(d => !selectedTaxon || d.Taxon === selectedTaxon)
-                .map(d => parseInt(d.Year)))].sort((a, b) => a - b);
-
-            var yearSelect = document.getElementById('year');
-            yearSelect.innerHTML = '<option value="">Todos</option>';
-            relevantYears.forEach(year => {
-                var option = document.createElement('option');
-                option.value = year;
-                option.textContent = year;
-                yearSelect.appendChild(option);
-            });
-        }
-
-        // Função para aplicar filtros
-        function applyFilters() {
-            var selectedState = stateSelect.value || document.getElementById('state-mobile').value;
-            var selectedTaxon = taxonSelect.value || document.getElementById('taxon-mobile').value;
-            var selectedType = document.getElementById('type').value || document.getElementById('type-mobile').value;
-            var selectedYear = document.getElementById('year').value || document.getElementById('year-mobile').value;
-
-            filteredData = allData.filter(d => {
-                var match = true;
-                if (selectedState) {
-                    match = match && (d.OtherArea === selectedState);
-                }
-                if (selectedTaxon) {
-                    match = match && (d.Taxon === selectedTaxon);
-                }
-                if (selectedYear) {
-                    match = match && (parseInt(d.Year) === parseInt(selectedYear));
-                }
-                if (selectedType) {
-                    if (selectedType === 'agregado') {
-                        // Agregado inclui tanto artesanal quanto industrial
-                        match = match && (d.Variable.includes('_art') || d.Variable.includes('_ind'));
-                    } else if (selectedType === 'artesanal') {
-                        match = match && d.Variable.includes('_art');
-                    } else if (selectedType === 'industrial') {
-                        match = match && d.Variable.includes('_ind');
-                    }
-                }
-                return match;
-            });
-
-            updateTable();
-            updateMapLayers();
-        }
-
-        // Função para atualizar a tabela com dados filtrados
-        function updateTable() {
-            var tableBody = document.querySelector('#data-table tbody');
-            tableBody.innerHTML = ''; // Limpa a tabela
-
-            if (filteredData.length === 0) {
-                var row = document.createElement('tr');
-                var cell = document.createElement('td');
-                cell.colSpan = 8;
-                cell.textContent = 'Nenhum dado encontrado para os filtros selecionados.';
-                row.appendChild(cell);
-                tableBody.appendChild(row);
-                return;
-            }
-
-            filteredData.forEach(rowData => {
-                var row = document.createElement('tr');
-                Object.values(rowData).forEach(cellData => {
-                    var cell = document.createElement('td');
-                    cell.textContent = cellData;
-                    row.appendChild(cell);
-                });
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Calcula os dados agregados
-        function calculateAggregates(taxon, year, type, state) {
-            var dataToAggregate = allData.filter(d =>
-                (!taxon || d.Taxon === taxon) &&
-                (!year || d.Year === year) &&
-                (!state || d.OtherArea === state)
-            );
-
-            var artes = dataToAggregate
-                .filter(d => d.Variable.includes('_art'))
-                .reduce((sum, d) => sum + (parseFloat(d["CatchAmount (tonnes)"].replace(',', '.')) || 0), 0);
-
-            var indus = dataToAggregate
-                .filter(d => d.Variable.includes('_ind'))
-                .reduce((sum, d) => sum + (parseFloat(d["CatchAmount (tonnes)"].replace(',', '.')) || 0), 0);
-
-            var agregado = artes + indus;
-
-            if (type === 'artesanal') return artes;
-            if (type === 'industrial') return indus;
-            if (type === 'agregado') return agregado;
-            return 0;
-        }
-
-        // Coordenadas precisas para o litoral do Rio de Janeiro
-        var rioCoastalRegion = L.polygon([
-            [-21.40768,-40.85618], // Angra dos Reis
-            [-22.18708,-41.9234], // Ilha Grande
-            [-22.88123,-43.36415], // Niterói
-            [-22.99806,-44.25697], // Cabo Frio
-            [-23.87775,-44.04419], // Arraial do Cabo
-            [-24.11499,-43.01495],  // Paraty
-            [-23.83026,-41.80993],
-            [-23.42273,-41.32954],
-            [-22.89254,-40.67336],
-            [-21.90753,-39.62468],
-        ], {
-            color: 'blue',
-            fillColor: '#add8e6',
-            fillOpacity: 0.5
-        });
-
-        // Coordenadas precisas para o litoral de São Paulo
-        var spCoastalRegion = L.polygon([
-            [-23.31766,-44.85521], // Cananeia
-            [-23.44072,-45.52065], // Ilha do Cardoso
-            [-23.64421,-46.09821], // Iguape
-            [-24.06825,-46.73069], // Santos
-            [-24.65076,-47.14345], // Ilhabela
-            [-24.766,-48.03626], // São Sebastião
-            [-25.63355,-47.82349],
-            [-25.51103,-46.97003],
-            [-25.07036,-46.3363],
-            [-24.78654,-45.50434],
-            [-24.34201,-44.89211],
-            [-24.09176,-44.45867], 
-        ], {
-            color: 'green',
-            fillColor: '#90ee90',
-            fillOpacity: 0.5
-        });
-
-        var overlays = {
-            "Rio de Janeiro": rioCoastalRegion,
-            "São Paulo": spCoastalRegion
-        };
-
-        // Adiciona os overlays ao mapa
-        Object.values(overlays).forEach(layer => {
-            layer.addTo(map);
-        });
-
-        // Função para atualizar a visibilidade dos overlays
-        function updateVisibility() {
-            var selectedState = stateSelect.value || document.getElementById('state-mobile').value;
-
-            Object.entries(overlays).forEach(([state, layer]) => {
-                if (!selectedState || selectedState === state) {
-                    if (!map.hasLayer(layer)) {
-                        map.addLayer(layer);
-                    }
-                } else {
-                    if (map.hasLayer(layer)) {
-                        map.removeLayer(layer);
-                    }
-                }
-            });
-        }
-
-        // Função para atualizar popups no mapa
-        function updatePopups() {
-            map.eachLayer(function(layer) {
-                if (layer instanceof L.Polygon) {
-                    layer.off('mouseover');
-                    layer.off('mouseout');
-                    layer.off('click');
-
-                    var state = Object.keys(overlays).find(key => overlays[key] === layer);
-                    if (!state) return;
-
-                    layer.on('mouseover', function (e) {
-                        var total = calculateAggregates(
-                            taxonSelect.value || document.getElementById('taxon-mobile').value,
-                            document.getElementById('year').value || document.getElementById('year-mobile').value,
-                            document.getElementById('type').value || document.getElementById('type-mobile').value,
-                            state
-                        ).toFixed(2);
-
-                        var info = `Estado: ${state}<br>
-                            Espécie: ${taxonSelect.value || document.getElementById('taxon-mobile').value || 'Todas'}<br>
-                            Tipo de Pesca: ${document.getElementById('type').value ? document.getElementById('type').value.charAt(0).toUpperCase() + document.getElementById('type').value.slice(1) : 'Todos'}<br>
-                            Ano: ${document.getElementById('year').value || document.getElementById('year-mobile').value || 'Todos'}<br>
-                            Quantidade: ${total || 0} toneladas`;
-
-                        var popup = L.popup({ maxWidth: 400, keepInView: true })
-                            .setLatLng(e.latlng)
-                            .setContent(info)
-                            .openOn(map);
-                    });
-
-                    layer.on('mouseout', function () {
-                        map.closePopup();
-                    });
-
-                    layer.on('click', function (e) {
-                        var total = calculateAggregates(
-                            taxonSelect.value || document.getElementById('taxon-mobile').value,
-                            document.getElementById('year').value || document.getElementById('year-mobile').value,
-                            document.getElementById('type').value || document.getElementById('type-mobile').value,
-                            state
-                        ).toFixed(2);
-
-                        var info = `Estado: ${state}<br>
-                            Espécie: ${taxonSelect.value || document.getElementById('taxon-mobile').value || 'Todas'}<br>
-                            Tipo de Pesca: ${document.getElementById('type').value ? document.getElementById('type').value.charAt(0).toUpperCase() + document.getElementById('type').value.slice(1) : 'Todos'}<br>
-                            Ano: ${document.getElementById('year').value || document.getElementById('year-mobile').value || 'Todos'}<br>
-                            Quantidade: ${total || 0} toneladas`;
-
-                        var popup = L.popup({ maxWidth: 400, keepInView: true })
-                            .setLatLng(e.latlng)
-                            .setContent(info)
-                            .openOn(map);
-                    });
-                }
-            });
-        }
-
-        // Função para atualizar os layers do mapa
-        function updateMapLayers() {
-            updateVisibility();
-            updatePopups();
-        }
-
-        // Evento de download para baixar os dados filtrados
-        document.getElementById('download').addEventListener('click', () => {
-            if (filteredData.length === 0) {
-                alert('Nenhum dado para baixar com os filtros selecionados.');
-                return;
-            }
-
-            var csvContent = Papa.unparse(filteredData);
-            var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            var link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'dados_pesca_filtrados.csv';
-            link.click();
-        });
-
-        // Eventos de mudança nos filtros (Desktop)
-        taxonSelect.addEventListener('change', () => {
-            applyFilters();
-        });
-        stateSelect.addEventListener('change', () => {
-            applyFilters();
-        });
-        document.getElementById('year').addEventListener('change', () => {
-            applyFilters();
-        });
-        document.getElementById('type').addEventListener('change', () => {
-            applyFilters();
-        });
-
-        // Eventos de mudança nos filtros (Mobile)
-        var taxonMobileSelect = document.getElementById('taxon-mobile');
-        var stateMobileSelect = document.getElementById('state-mobile');
-        var yearMobileSelect = document.getElementById('year-mobile');
-        var typeMobileSelect = document.getElementById('type-mobile');
-
-        document.getElementById('apply-filters').addEventListener('click', () => {
-            applyFilters();
-            closeModal();
-        });
-
-        // Função para abrir o modal
-        function openModal() {
-            document.getElementById('filter-modal').style.display = 'block';
-        }
-
-        // Função para fechar o modal
-        function closeModal() {
-            document.getElementById('filter-modal').style.display = 'none';
-        }
-
-        // Eventos para abrir e fechar o modal
-        var filterButton = document.getElementById('filter-button');
-        var closeButton = document.querySelector('.close-button');
-
-        filterButton.addEventListener('click', openModal);
-        closeButton.addEventListener('click', closeModal);
-
-        // Fecha o modal se clicar fora do conteúdo
-        window.addEventListener('click', function(event) {
-            var modal = document.getElementById('filter-modal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        });
-
-        // Função para atualizar a tabela com dados filtrados
-        function updateTable() {
-            var tableBody = document.querySelector('#data-table tbody');
-            tableBody.innerHTML = ''; // Limpa a tabela
-
-            if (filteredData.length === 0) {
-                var row = document.createElement('tr');
-                var cell = document.createElement('td');
-                cell.colSpan = 8;
-                cell.textContent = 'Nenhum dado encontrado para os filtros selecionados.';
-                row.appendChild(cell);
-                tableBody.appendChild(row);
-                return;
-            }
-
-            filteredData.forEach(rowData => {
-                var row = document.createElement('tr');
-                Object.values(rowData).forEach(cellData => {
-                    var cell = document.createElement('td');
-                    cell.textContent = cellData;
-                    row.appendChild(cell);
-                });
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Inicializa os overlays, popups e tabela
+        // Atualiza a tabela com os dados iniciais
+        updateTable();
+        // Atualiza sobreposições e popups do mapa
         updateVisibility();
         updatePopups();
-        updateTable();
+
+        // Inicializa e atualiza o gráfico Plotly
+        initPlotlyChart();
+        updatePlotlyChart();
     }
 });
+
+// -------------- Preenche <select> para Taxon, State e Year --------------//
+function populateSelects() {
+    var taxons = [...new Set(allData.map(d => d.Taxon))].sort();
+    var states = [...new Set(allData.map(d => d.OtherArea))].sort();
+    var years = [...new Set(allData.map(d => parseInt(d.Year)))].sort((a, b) => a - b);
+
+    // Seletores desktop
+    var taxonSelect = document.getElementById('taxon');
+    var stateSelect = document.getElementById('state');
+    var yearSelect = document.getElementById('year');
+
+    // Seletores mobile
+    var taxonMobileSelect = document.getElementById('taxon-mobile');
+    var stateMobileSelect = document.getElementById('state-mobile');
+    var yearMobileSelect = document.getElementById('year-mobile');
+
+    // Preenche taxon (espécie)
+    taxons.forEach(taxon => {
+        var optionDesk = document.createElement('option');
+        optionDesk.value = taxon;
+        optionDesk.textContent = taxon;
+        taxonSelect.appendChild(optionDesk);
+
+        var optionMob = optionDesk.cloneNode(true);
+        taxonMobileSelect.appendChild(optionMob);
+    });
+
+    // Preenche estado
+    states.forEach(state => {
+        var optionDesk = document.createElement('option');
+        optionDesk.value = state;
+        optionDesk.textContent = state;
+        stateSelect.appendChild(optionDesk);
+
+        var optionMob = optionDesk.cloneNode(true);
+        stateMobileSelect.appendChild(optionMob);
+    });
+
+    // Preenche ano
+    years.forEach(year => {
+        var optionDesk = document.createElement('option');
+        optionDesk.value = year;
+        optionDesk.textContent = year;
+        yearSelect.appendChild(optionDesk);
+
+        var optionMob = optionDesk.cloneNode(true);
+        yearMobileSelect.appendChild(optionMob);
+    });
+}
+
+// -------------- Evento de Filtro (Desktop) --------------//
+document.getElementById('taxon').addEventListener('change', applyFilters);
+document.getElementById('type').addEventListener('change', applyFilters);
+document.getElementById('state').addEventListener('change', applyFilters);
+document.getElementById('year').addEventListener('change', applyFilters);
+
+// -------------- Evento de Filtro (Mobile) --------------//
+document.getElementById('apply-filters').addEventListener('click', () => {
+    applyFilters();
+    closeModal();
+});
+
+// -------------- Aplica Filtros --------------//
+function applyFilters() {
+    var selectedTaxon = document.getElementById('taxon').value || document.getElementById('taxon-mobile').value;
+    var selectedType = document.getElementById('type').value || document.getElementById('type-mobile').value;
+    var selectedState = document.getElementById('state').value || document.getElementById('state-mobile').value;
+    var selectedYear = document.getElementById('year').value || document.getElementById('year-mobile').value;
+
+    filteredData = allData.filter(d => {
+        var match = true;
+        if (selectedTaxon) {
+            match = match && (d.Taxon === selectedTaxon);
+        }
+        if (selectedState) {
+            match = match && (d.OtherArea === selectedState);
+        }
+        if (selectedYear) {
+            match = match && (parseInt(d.Year) === parseInt(selectedYear));
+        }
+        if (selectedType) {
+            if (selectedType === 'agregado') {
+                // Tipo "agregado" => soma de '_art' + '_ind'
+                match = match && (d.Variable.includes('_art') || d.Variable.includes('_ind'));
+            } else if (selectedType === 'artesanal') {
+                match = match && d.Variable.includes('_art');
+            } else if (selectedType === 'industrial') {
+                match = match && d.Variable.includes('_ind');
+            }
+        }
+        return match;
+    });
+
+    // Atualiza tabela, mapa e gráfico
+    updateTable();
+    updateMapLayers();
+    updatePlotlyChart();
+}
+
+// -------------- Atualiza Tabela --------------//
+function updateTable() {
+    var tableBody = document.querySelector('#data-table tbody');
+    tableBody.innerHTML = ''; // Limpa tabela anterior
+
+    if (filteredData.length === 0) {
+        var row = document.createElement('tr');
+        var cell = document.createElement('td');
+        cell.colSpan = 8;
+        cell.textContent = 'Nenhum dado encontrado para os filtros selecionados.';
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+
+    filteredData.forEach(rowData => {
+        var row = document.createElement('tr');
+        // Ordenamos as colunas no mesmo formato do <thead>
+        var cells = [
+            rowData.OtherArea,
+            rowData.Group,
+            rowData.Variable,
+            rowData.Year,
+            rowData.PortugueseCommonName,
+            rowData.Taxon,
+            rowData["CatchAmount (tonnes)"],
+            rowData.Sector
+        ];
+        cells.forEach(value => {
+            var cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+        tableBody.appendChild(row);
+    });
+}
+
+// -------------- Inicializa Polígonos no Mapa --------------//
+function initPolygons() {
+    // Exemplo: Polígono do litoral do Rio de Janeiro
+    rioCoastalRegion = L.polygon([
+        [-21.40768, -40.85618],
+        [-22.18708, -41.9234],
+        [-22.88123, -43.36415],
+        [-22.99806, -44.25697],
+        [-23.87775, -44.04419],
+        [-24.11499, -43.01495],
+        [-23.83026, -41.80993],
+        [-23.42273, -41.32954],
+        [-22.89254, -40.67336],
+        [-21.90753, -39.62468],
+    ], {
+        color: 'blue',
+        fillColor: '#add8e6',
+        fillOpacity: 0.5
+    }).addTo(map);
+
+    // Exemplo: Polígono do litoral de São Paulo
+    spCoastalRegion = L.polygon([
+        [-23.31766,-44.85521],
+        [-23.44072,-45.52065],
+        [-23.64421,-46.09821],
+        [-24.06825,-46.73069],
+        [-24.65076,-47.14345],
+        [-24.766,-48.03626],
+        [-25.63355,-47.82349],
+        [-25.51103,-46.97003],
+        [-25.07036,-46.3363],
+        [-24.78654,-45.50434],
+        [-24.34201,-44.89211],
+        [-24.09176,-44.45867],
+    ], {
+        color: 'green',
+        fillColor: '#90ee90',
+        fillOpacity: 0.5
+    }).addTo(map);
+
+    // Cria objeto overlays para manipular depois
+    overlays["Rio de Janeiro"] = rioCoastalRegion;
+    overlays["São Paulo"] = spCoastalRegion;
+}
+
+// -------------- Atualiza Sobreposições e Popups --------------//
+function updateMapLayers() {
+    updateVisibility();
+    updatePopups();
+}
+
+// Mostra/esconde polígonos conforme estado selecionado
+function updateVisibility() {
+    var selectedState = document.getElementById('state').value || document.getElementById('state-mobile').value;
+
+    Object.entries(overlays).forEach(([state, layer]) => {
+        // Se não houver estado selecionado, mostra todos
+        if (!selectedState || selectedState === state) {
+            if (!map.hasLayer(layer)) map.addLayer(layer);
+        } else {
+            if (map.hasLayer(layer)) map.removeLayer(layer);
+        }
+    });
+}
+
+// Cria popups ao passar ou clicar nos polígonos
+function updatePopups() {
+    map.eachLayer(layer => {
+        if (layer instanceof L.Polygon) {
+            layer.off('mouseover');
+            layer.off('mouseout');
+            layer.off('click');
+
+            // Identifica qual estado esse layer representa
+            var state = Object.keys(overlays).find(key => overlays[key] === layer);
+            if (!state) return;
+
+            layer.on('mouseover', function(e) {
+                var total = calculateAggregates(state).toFixed(2);
+                var info = `
+                    <strong>Estado:</strong> ${state}<br>
+                    <strong>Quantidade:</strong> ${total} toneladas
+                `;
+                var popup = L.popup({ maxWidth: 400, keepInView: true })
+                    .setLatLng(e.latlng)
+                    .setContent(info)
+                    .openOn(map);
+            });
+
+            layer.on('mouseout', function() {
+                map.closePopup();
+            });
+
+            layer.on('click', function(e) {
+                var total = calculateAggregates(state).toFixed(2);
+                var info = `
+                    <strong>Estado:</strong> ${state}<br>
+                    <strong>Quantidade:</strong> ${total} toneladas
+                `;
+                var popup = L.popup({ maxWidth: 400, keepInView: true })
+                    .setLatLng(e.latlng)
+                    .setContent(info)
+                    .openOn(map);
+            });
+        }
+    });
+}
+
+// Função de cálculo agregado (exemplo: soma das capturas no estado X, respeitando os filtros)
+function calculateAggregates(state) {
+    var dataToAggregate = filteredData.filter(d => d.OtherArea === state);
+
+    var total = dataToAggregate.reduce((sum, d) => {
+        var val = parseFloat((d["CatchAmount (tonnes)"] || "0").replace(",", "."));
+        return sum + (val || 0);
+    }, 0);
+
+    return total;
+}
+
+// -------------- Download CSV Filtrado --------------//
+document.getElementById('download').addEventListener('click', () => {
+    if (filteredData.length === 0) {
+        alert('Nenhum dado para baixar com os filtros selecionados.');
+        return;
+    }
+    var csvContent = Papa.unparse(filteredData);
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'dados_pesca_filtrados.csv';
+    link.click();
+});
+
+// -------------- Modal de Filtros (Mobile) --------------//
+var filterButton = document.getElementById('filter-button');
+var closeButton = document.querySelector('.close-button');
+filterButton.addEventListener('click', openModal);
+closeButton.addEventListener('click', closeModal);
+window.addEventListener('click', function(event) {
+    var modal = document.getElementById('filter-modal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+});
+
+function openModal() {
+    document.getElementById('filter-modal').style.display = 'block';
+}
+function closeModal() {
+    document.getElementById('filter-modal').style.display = 'none';
+}
+
+// -------------- Plotly: inicializar e atualizar gráfico --------------//
+var plotlyChartInitialized = false;
+
+// Inicializa o gráfico Plotly (chamado uma única vez, após CSV estar carregado)
+function initPlotlyChart() {
+    // Cria algo inicial, só para não ficar vazio
+    Plotly.newPlot('plotly-chart', [], {title: 'Série Temporal de Pesca'});
+    plotlyChartInitialized = true;
+}
+
+// Atualiza o gráfico com base em `filteredData`
+function updatePlotlyChart() {
+    if (!plotlyChartInitialized) return;
+
+    // Se não houver dados filtrados, limpa
+    if (filteredData.length === 0) {
+        Plotly.react("plotly-chart", [], {title: "Nenhum dado para exibir"});
+        return;
+    }
+
+    // 1) Agrega por ano
+    var yearTotals = {};
+    filteredData.forEach(d => {
+        var year = parseInt(d.Year);
+        var amount = parseFloat((d["CatchAmount (tonnes)"] || "0").replace(",", "."));
+        if (!yearTotals[year]) {
+            yearTotals[year] = 0;
+        }
+        yearTotals[year] += amount;
+    });
+
+    // 2) Ordena anos
+    var sortedYears = Object.keys(yearTotals).sort((a, b) => parseInt(a) - parseInt(b));
+    var totals = sortedYears.map(year => yearTotals[year]);
+
+    // 3) Define traço do Plotly (gráfico de linha)
+    var trace = {
+        x: sortedYears,
+        y: totals,
+        mode: "lines+markers",
+        type: "scatter",
+        line: { shape: "linear", color: "#0d6efd" },
+        marker: { size: 6, color: "#0d6efd" },
+        name: "Toneladas pescadas"
+    };
+
+    // 4) Layout
+    var layout = {
+        title: "Série Temporal de Pesca",
+        xaxis: { title: "Ano" },
+        yaxis: { title: "Toneladas" }
+    };
+
+    // 5) Atualiza o gráfico
+    Plotly.react("plotly-chart", [trace], layout, { responsive: true });
+}

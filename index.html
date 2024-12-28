@@ -12,12 +12,16 @@
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <!-- PapaParse JS -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.1/papaparse.min.js"></script>
+    <!-- Plotly JS -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
 </head>
 <body>
     <header>
         <img src="pisces.jpeg" alt="Logo do Projeto">
-        <h1>Reconstrução da Estatística Pesquira Marinha de 1950 até 2015</h1>
+        <h1>Reconstrução da Estatística Pesqueira Marinha de 1950 até 2015</h1>
     </header>
+
+    <!-- Controles (Desktop) -->
     <div id="controls">
         <div class="control-group">
             <label for="taxon">Espécie:</label>
@@ -53,10 +57,20 @@
         <button id="download">Baixar CSV Filtrado</button>
     </div>
 
-    <!-- Contêiner Comum para Tabela e Mapa -->
+    <!-- Conteúdo Principal -->
     <div id="content">
-        <div id="map"></div>
-        <!-- Tabela para exibir dados filtrados -->
+        <!-- Mapa e Gráfico, lado a lado no desktop -->
+        <div id="map-and-chart">
+            <!-- Mapa -->
+            <div id="map"></div>
+
+            <!-- Gráfico Plotly -->
+            <div id="chart-container">
+                <div id="plotly-chart"></div>
+            </div>
+        </div>
+
+        <!-- Tabela -->
         <div id="table-container">
             <h2>Dados Filtrados</h2>
             <table id="data-table">
@@ -77,14 +91,10 @@
                 </tbody>
             </table>
         </div>
-
-        <!-- Div para o mapa -->
-        
     </div>
 
     <!-- Ícone de Filtro para Mobile -->
     <button id="filter-button" aria-label="Abrir Filtros">
-        <!-- Você pode usar um ícone de filtro SVG ou Font Awesome -->
         &#9881; <!-- Ícone de engrenagem como exemplo -->
     </button>
 
@@ -100,7 +110,6 @@
                         <option value="">Todas</option>
                     </select>
                 </div>
-
                 <div class="control-group">
                     <label for="type-mobile">Tipo de Pesca:</label>
                     <select id="type-mobile">
@@ -110,27 +119,24 @@
                         <option value="agregado">Agregado</option>
                     </select>
                 </div>
-
                 <div class="control-group">
                     <label for="state-mobile">Estado:</label>
                     <select id="state-mobile">
                         <option value="">Todos</option>
                     </select>
                 </div>
-
                 <div class="control-group">
                     <label for="year-mobile">Ano:</label>
                     <select id="year-mobile">
                         <option value="">Todos</option>
                     </select>
                 </div>
-
                 <button id="apply-filters">Aplicar Filtros</button>
             </div>
         </div>
     </div>
 
-    <!-- Seu script JS -->
+    <!-- Script Principal -->
     <script src="script.js"></script>
 </body>
 </html>
